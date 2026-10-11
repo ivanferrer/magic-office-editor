@@ -1,0 +1,101 @@
+name: Testar e publicar instalador Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Testes e interface
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interface-e-testes
+          path: |
+            screenshots/
+            playwright-report/
+
+  windows:
+    name: Instalador Windows 11 x64
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+      - run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Testar o aplicativo empacotado
+        shell: pwsh
+        run: |
+          $env:MAGIC_EXECUTABLE = (Resolve-Path 'release/win-unpacked/Magic Office Editor.exe').Path
+          npm run test:desktop
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Gerar checksum
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem release/*-Setup.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)"
+          }
+          $lines | Set-Content release/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Magic-Office-Editor-Windows-x64
+          path: |
+            release/*-Setup.exe
+            release/SHA256SUMS.txt
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: teste-desktop-windows
+          path: |
+            screenshots/
+            playwright-report/
+      - name: Publicar versão beta no GitHub Releases
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --target $env:GITHUB_SHA --title "Magic Office Editor $version (beta)" --prerelease --notes-file docs/RELEASE.md
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $files = @(Get-ChildItem release/*-Setup.exe | ForEach-Object { $_.FullName }) + @('release/SHA256SUMS.txt')
+          gh release upload $tag @files --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

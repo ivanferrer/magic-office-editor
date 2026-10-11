@@ -79,15 +79,15 @@ Ao salvar novamente um `.magic`, a versão anterior fica no mesmo diretório com
 
 ## Atalhos
 
-| Atalho | Ação |
-| --- | --- |
-| Ctrl+N | Novo documento |
-| Ctrl+O | Abrir |
-| Ctrl+S | Salvar |
-| Ctrl+Shift+S | Salvar como |
-| Ctrl+F | Localizar e substituir |
-| Ctrl+P | Imprimir |
-| Ctrl+Z / Ctrl+Y | Desfazer / refazer |
+| Atalho                   | Ação                           |
+| ------------------------ | ------------------------------ |
+| Ctrl+N                   | Novo documento                 |
+| Ctrl+O                   | Abrir                          |
+| Ctrl+S                   | Salvar                         |
+| Ctrl+Shift+S             | Salvar como                    |
+| Ctrl+F                   | Localizar e substituir         |
+| Ctrl+P                   | Imprimir                       |
+| Ctrl+Z / Ctrl+Y          | Desfazer / refazer             |
 | Ctrl+B / Ctrl+I / Ctrl+U | Negrito / itálico / sublinhado |
 
 ## Desenvolvimento
